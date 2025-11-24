@@ -1,7 +1,9 @@
+import os
 from flask import g, jsonify
 from app.db.psql_connection_pool import PsqlConnectionPool
 from app.config.config import DB_CONFIG # Configuración de la BBDD
 from app.db import queries as db # Consultas a la BBDD
+import requests
 
 
 # ------------------ Pool por request ------------------ #
@@ -14,6 +16,28 @@ def get_db_pool():
         g.db_pool = PsqlConnectionPool(DB_CONFIG)
         g.db_pool.connect()  # Inicializa el pool si no está creado
     return g.db_pool
+
+# ----------- MICROSOFT GRAPH ------------ #
+# Obtiene un access token para Microsoft Graph usando Client Credentials.
+def get_access_token():
+    # Leer variables de entorno
+    TENANT_ID = os.getenv("TENANT_ID")
+    CLIENT_ID = os.getenv("CLIENT_ID")
+    CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+
+    # URL del endpoint de token de Azure AD (OAuth2)
+    # Hacer la petición para obtener el token
+    url = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    data = {
+        "grant_type": "client_credentials",
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "scope": "https://graph.microsoft.com/.default"
+    }
+    response = requests.post(url, data=data, headers=headers)
+    response.raise_for_status()
+    return response.json()["access_token"]
 
 # ----------------- PRUEBA ----------------- #
 def saludo():

@@ -9,6 +9,15 @@ def saludo_route():
     data = funcs.saludo()
     return jsonify({"saludo": data})
 
+# -------------------- ACCESS TOKEN MICROSOFT GRAPH -------------------- #
+@app.route("/test-token", methods=["GET"])
+def test_token():
+    try:
+        token = funcs.get_access_token()
+        return jsonify({"token_preview": token[:50] + "..."})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
 """-----------------------------------------------------------------------
                        PROYECTOS
 -----------------------------------------------------------------------"""
