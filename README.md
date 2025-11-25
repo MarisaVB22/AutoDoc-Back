@@ -42,7 +42,7 @@ requirements.txt      # Instalaciones necesarias
 
 ## Instrucciones rápidas (Windows PowerShell):
 
-### 1. Crear un entorno virtual e instalar dependencias (opcional si quieres correr Flask localmente):
+### 1. Instalar dependencias:
 
 ```powershell
 pip install -r requirements.txt
