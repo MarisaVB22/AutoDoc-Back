@@ -85,6 +85,20 @@ python main.py
 
 La aplicación escuchará por defecto en http://127.0.0.1:5000/ y expondrá una ruta `/` que devuelve un JSON simple.
 
+### 5. Detener contenedores Docker:
+Para detener los contenedores sin borrarlos: detiene los contenedores, pero deja los volúmenes y redes creadas para poder levantarlos de nuevo.
+```powershell
+docker-compose stop
+```
+Para eliminar contenedores y redes pero mantener los volúmenes:
+```powershell
+docker-compose down
+```
+Para eliminar contenedores, redes y volúmenes (borrando también la base de datos):
+```powershell
+docker-compose down -v
+```
+
 ---
 
 # DOCUMENTACIÓN TÉCNICA
