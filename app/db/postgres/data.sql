@@ -1,26 +1,31 @@
--- 1. CREATE USER (run as postgres superuser)
-CREATE USER user WITH PASSWORD 'autodoc';
+-- Crear esquema si no existe
+CREATE SCHEMA IF NOT EXISTS autodoc AUTHORIZATION autodoc_user;
 
--- 2. CREATE DATABASE
-CREATE DATABASE autodoc_db OWNER user ENCODING 'UTF8';
-
--- 3. CREATE SCHEMA
-CREATE SCHEMA IF NOT EXISTS documentos AUTHORIZATION user;
-GRANT ALL PRIVILEGES ON SCHEMA documentos TO user;
-
--- 4. CREATE TABLES
-
--- Tabla de ejemplo: documentos
-CREATE TABLE documentos.documentos (
-    documento_id SERIAL PRIMARY KEY,
-    titulo VARCHAR(150) NOT NULL,
-    contenido TEXT,
+-- Tabla de proyectos
+CREATE TABLE IF NOT EXISTS autodoc.proyectos (
+    proyecto_id SERIAL PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL,
+    descripcion TEXT,
+    proyecto_url VARCHAR(250),
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. INSERTAR REGISTROS DE EJEMPLO
+-- Tabla de documentos
+CREATE TABLE IF NOT EXISTS autodoc.documentos (
+    documento_id SERIAL PRIMARY KEY,
+    proyecto_id INT NOT NULL REFERENCES autodoc.proyectos(proyecto_id) ON DELETE CASCADE,
+    nombre VARCHAR(150) NOT NULL,
+    descripcion TEXT,
+    url VARCHAR(250),
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-INSERT INTO documentos.documentos (titulo, contenido)
+-- Insertar datos de ejemplo
+INSERT INTO autodoc.proyectos (nombre, descripcion, proyecto_url)
 VALUES 
-('Manual de usuario', 'Este es el manual de usuario para la aplicación AutoDoc.'),
-('Guía de instalación', 'Instrucciones paso a paso para instalar y configurar AutoDoc.');
+('Proyecto AutoDoc', 'Proyecto para gestionar documentos automáticamente.', 'https://mi-proyecto.com');
+
+INSERT INTO autodoc.documentos (proyecto_id, nombre, descripcion, url)
+VALUES
+(1, 'Manual de usuario', 'Manual de usuario para AutoDoc', 'https://onedrive.fake/manual.pdf'),
+(1, 'Guía de instalación', 'Guía paso a paso para instalar AutoDoc', 'https://onedrive.fake/guia.pdf');

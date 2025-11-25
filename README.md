@@ -20,26 +20,24 @@ Este repositorio contiene una aplicación Flask mínima conectada a PostgreSQL u
 ---
 
 ## Estructura del proyecto:
-
 ```powershell
 app/
 │
 ├── __init__.py
 ├── routes/
-│   └── services.py
+│   └── services.py   # Endpoints
 └── utils/
-    └── funciones.py
+    └── funciones.py  # Funciones auxiliares a los endpoints
 └── db/
     └── postgres/
-        └── data.sql # Script de inicialización de la base de datos      
-    └── queries.py
+        └── data.sql  # Script de inicialización de la base de datos      
+    └── queries.py    # Constantes que contienen las consultas a la BBDD
+    └── psql_connection_pool.py # Pool de conexiones (para mejorar eficiencia de la conexión con la BBDD)
 main.py
-<<<<<<< HEAD
+docker-compose.yml    # Contenedores para PostgreSQL
+requirements.txt      # Instalaciones necesarias
 ```
-=======
-docker-compose.yml
-requirements.txt
->>>>>>> andrea
+```
 
 ---
 
@@ -48,8 +46,6 @@ requirements.txt
 ### 1. Crear un entorno virtual e instalar dependencias (opcional si quieres correr Flask localmente):
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
@@ -67,19 +63,20 @@ Esto levantará:
     - Tabla documentos.documentos con registros de ejemplo
 - pgAdmin (pgadmin) en el puerto 8080
 
-### 3. Acceder a pgAmin (opcional)
+### 3. Acceder a pgAmin para ver la BBDD de forma gráfica (opcional)
 
-3.1. Abrir navegador: http://localhost:8080
-    Usuario: admin@admin.com
-    Contraseña: admin123
-3.2. Agregar un servidor:
-    Name: PostgresLocal
-    Host name/address: postgres
-    Port: 5432
-    Username: user
-    Password: pss
-3.3. Guardar y conectar
-3.4. Explorar la base de datos autodoc_db → Schemas → documentos → Tables → documentos.
+- Abrir navegador: http://localhost:8080
+    - Usuario: admin@admin.com
+    - Contraseña: admin123
+- Agregar un servidor:
+    - Name: PostgresLocal
+    - Host name/address: postgres
+    - Port: 5432
+    - Base de datos de mantenimiento: autodoc_db
+    - Username: autodoc_user
+    - Password: autodoc
+- Guardar y conectar
+- Explorar la base de datos autodoc_db → Schemas → documentos → Tables → documentos.
 
 ### 4. Ejecutar la aplicación Flask localmente:
 
@@ -87,34 +84,44 @@ Esto levantará:
 python main.py
 ```
 
-<<<<<<< HEAD
 La aplicación escuchará por defecto en http://127.0.0.1:5000/ y expondrá una ruta `/` que devuelve un JSON simple.
-=======
-- La aplicación escuchará por defecto en http://127.0.0.1:5000/
-- Puedes probar la ruta /crear_tabla en Postman:
 
-```powershell
-GET http://127.0.0.1:5000/crear_tabla
-```
+---
 
-Respuesta esperada: "Tabla creada correctamente"
+# DOCUMENTACIÓN TÉCNICA
 
-#### 5. Detener los contenedores
+## Endpoints principales
 
-```powershell
-docker-compose down
-```
+### Proyectos
+- `GET /proyectos` → Lista todos los proyectos
+- `POST /proyectos` → Crea un nuevo proyecto
+- `GET /proyectos/{id}` → Obtiene un proyecto por ID
+- `PUT /proyectos/{id}` → Modifica un proyecto
+- `DELETE /proyectos/{id}` → Elimina un proyecto
 
-- Esto detiene y elimina los contenedores pero mantiene los volúmenes de datos.
-- Para eliminar también los volúmenes:
+### Documentos
+- `GET /proyectos/{idProyecto}/documentos` → Lista documentos de un proyecto
+- `POST /proyectos/{idProyecto}/documentos` → Subir un nuevo documento
+- `GET /proyectos/{idProyecto}/documentos/{idDocumento}` → Obtener documento
+- `PUT /proyectos/{idProyecto}/documentos/{idDocumento}` → Modificar documento
+- `DELETE /proyectos/{idProyecto}/documentos/{idDocumento}` → Eliminar documento
+- `POST /proyectos/{idProyecto}/documentos/buscar` → Buscar documentos con IA
+- `POST /proyectos/{idProyecto}/documentos/analizar` → Analizar documento con IA
 
+## Modelos de datos
 
-```powershell
-docker-compose down -v
-```
+### Proyecto
+| Campo       | Tipo    | Descripción |
+|------------|---------|-------------|
+| idProyecto | integer | Identificador del proyecto |
+| nombre     | string  | Nombre del proyecto |
+| descripcion| string  | Descripción del proyecto |
+| proyecto_url | string | URL del proyecto |
 
-### 6. Notas
-- Variables de conexión a PostgreSQL (DB_HOST, DB_USER, DB_PASS, DB_NAME) se encuentran en config.py.
-- No subas datos sensibles al repositorio.
-- Gracias al script data.sql dentro de app/db/postgres, cualquier persona que clone el repositorio y haga docker-compose up -d tendrá la base de datos lista automáticamente, sin necesidad de ejecutar endpoints o scripts adicionales.
->>>>>>> andrea
+### Documento
+| Campo       | Tipo    | Descripción |
+|------------|---------|-------------|
+| idDocumento | integer | Identificador del documento |
+| nombre      | string  | Nombre del documento |
+| descripcion | string  | Descripción del documento |
+| url         | string  | URL del archivo subido |
