@@ -119,9 +119,9 @@ docker-compose down -v
 
 # SHAREPOINT DE PRUEBA
 
-Correo: [autodocapp@autodocapp.onmicrosoft.com](mailto:autodocapp@autodocapp.onmicrosoft.com)
-Contraseña Microsoft: @Autodoc_pass
-Enlace del sitio: https://autodocapp.sharepoint.com/sites/autodocapp
+- Correo: [autodocapp@autodocapp.onmicrosoft.com](mailto:autodocapp@autodocapp.onmicrosoft.com)
+- Contraseña Microsoft: @Autodoc_pass
+- Enlace del sitio: https://autodocapp.sharepoint.com/sites/autodocapp
 
 ---
 
