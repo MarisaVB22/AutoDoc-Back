@@ -115,6 +115,13 @@ Para eliminar contenedores, redes y volúmenes (borra también la base de datos)
 ```powershell
 docker-compose down -v
 ```
+---
+
+# SHAREPOINT DE PRUEBA
+
+Correo: [autodocapp@autodocapp.onmicrosoft.com](mailto:autodocapp@autodocapp.onmicrosoft.com)
+Contraseña Microsoft: @Autodoc_pass
+Enlace del sitio: https://autodocapp.sharepoint.com/sites/autodocapp
 
 ---
 
@@ -135,6 +142,7 @@ docker-compose down -v
 - `GET /proyectos/{idProyecto}/documentos/{idDocumento}` → Obtener documento
 - `PUT /proyectos/{idProyecto}/documentos/{idDocumento}` → Modificar documento
 - `DELETE /proyectos/{idProyecto}/documentos/{idDocumento}` → Eliminar documento
+Aún no implementados:
 - `POST /proyectos/{idProyecto}/documentos/buscar` → Buscar documentos con IA
 - `POST /proyectos/{idProyecto}/documentos/analizar` → Analizar documento con IA
 
@@ -143,16 +151,20 @@ docker-compose down -v
 ### Proyecto
 | Campo       | Tipo    | Descripción |
 |------------|---------|-------------|
-| idProyecto | integer | Identificador del proyecto |
-| nombre     | string  | Nombre del proyecto |
-| descripcion| string  | Descripción del proyecto |
-| proyecto_url | string | URL del proyecto |
-| id_sharepoint | string | ID de la carpeta del proyecto en SharePoint |
+| idProyecto | integer | PK - Identificador del proyecto |
+| nombre     | varchar (150)  | Nombre del proyecto |
+| descripcion| text  | Descripción del proyecto |
+| proyecto_url | varchar (250) | URL del proyecto en SharePoint |
+| id_sharepoint | varchar (100) | ID de la carpeta del proyecto en SharePoint |
+| fecha_creacion | timestampz | Fecha de creación |
 
 ### Documento
 | Campo       | Tipo    | Descripción |
 |------------|---------|-------------|
-| idDocumento | integer | Identificador del documento |
-| nombre      | string  | Nombre del documento |
-| descripcion | string  | Descripción del documento |
-| url         | string  | URL del archivo subido |
+| idDocumento | integer | PK - Identificador del documento |
+| proyecto_id      | integer  | FK - Identificardor del proyecto asociado |
+| nombre      | varchar (150)  | Nombre del documento |
+| descripcion | text  | Descripción del documento |
+| url         | varchar (250)  | URL del archivo subido |
+| id_sharepoint | varchar (100) | ID del archivo en SharePoint |
+| fecha_creacion | timestampz | Fecha de creación |

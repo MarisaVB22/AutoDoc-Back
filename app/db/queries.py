@@ -28,18 +28,27 @@ DELETE_PROJECT = "DELETE FROM autodoc.proyectos WHERE proyecto_id = %s;"
 # ----------------- DOCUMENTOS -----------------
 # Obtener todos los documentos de un proyecto
 GET_DOCUMENTS_BY_PROJECT = "SELECT * FROM autodoc.documentos WHERE proyecto_id = %s;"
+
 # Obtener un documento por ID
 GET_DOCUMENT_BY_ID = "SELECT * FROM autodoc.documentos WHERE documento_id = %s;"
+
 # Crear un nuevo documento
 CREATE_DOCUMENT = """
-    INSERT INTO autodoc.documentos (proyecto_id, nombre, descripcion, url)
-    VALUES (%s, %s, %s, %s) RETURNING documento_id;
+    INSERT INTO autodoc.documentos (proyecto_id, nombre, descripcion, url, id_sharepoint)
+    VALUES (%s, %s, %s, %s, %s) RETURNING documento_id;
 """
 # Actualizar un documento existente
 UPDATE_DOCUMENT = """
     UPDATE autodoc.documentos
+    SET nombre = %s, descripcion = %s
+    WHERE documento_id = %s;
+"""
+UPDATE_DOCUMENT_URL = """
+    UPDATE autodoc.documentos
     SET nombre = %s, descripcion = %s, url = %s
     WHERE documento_id = %s;
 """
+
+
 # Eliminar un documento
 DELETE_DOCUMENT = "DELETE FROM autodoc.documentos WHERE documento_id = %s;"
