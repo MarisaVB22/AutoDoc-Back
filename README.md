@@ -42,6 +42,23 @@ requirements.txt      # Instalaciones necesarias
 
 ## Instrucciones rápidas (Windows PowerShell):
 
+### 0. Verificar versión de Python
+
+Este proyecto utiliza Python 3.11.9.
+Comprueba tu versión con:
+
+```powershell
+python --version
+```
+
+Si no coincide, instala la versión correcta o crea un entorno virtual con la versión adecuada.
+Para crear y activar entorno virtual:
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
 ### 1. Instalar dependencias:
 
 ```powershell
@@ -85,6 +102,40 @@ python main.py
 
 La aplicación escuchará por defecto en http://127.0.0.1:5000/ y expondrá una ruta `/` que devuelve un JSON simple.
 
+### 5. Detener contenedores Docker:
+Para detener los contenedores sin borrarlos: detiene los contenedores, pero deja los volúmenes y redes creadas para poder levantarlos de nuevo.
+```powershell
+docker-compose stop
+```
+Para eliminar contenedores y redes pero mantener los volúmenes:
+```powershell
+docker-compose down
+```
+Para eliminar contenedores, redes y volúmenes (borra también la base de datos):
+```powershell
+docker-compose down -v
+```
+
+### Posible error: psycopg2.OperationalError
+Si aparece este error al iniciar la aplicación, puede significar que el puerto de PostgreSQL que quieres usar ya está ocupado.
+
+Para comprobarlo:
+```powershell
+netstat -ano | findstr 5432
+```
+
+- En lugar de 5432 ponemos el puerto que queremos comprobar. 
+- Si estuviera ocupado, tenemos que elegir otro en docker-compose.yml y actualizarlo en config.py (DB_PORT)
+- Recuerda reiniciar los contenedores.
+
+---
+
+# SHAREPOINT DE PRUEBA
+
+- Correo: [autodocapp@autodocapp.onmicrosoft.com](mailto:autodocapp@autodocapp.onmicrosoft.com)
+- Contraseña Microsoft: @Autodoc_pass
+- Enlace del sitio: https://autodocapp.sharepoint.com/sites/autodocapp
+
 ---
 
 # DOCUMENTACIÓN TÉCNICA
@@ -104,6 +155,7 @@ La aplicación escuchará por defecto en http://127.0.0.1:5000/ y expondrá una 
 - `GET /proyectos/{idProyecto}/documentos/{idDocumento}` → Obtener documento
 - `PUT /proyectos/{idProyecto}/documentos/{idDocumento}` → Modificar documento
 - `DELETE /proyectos/{idProyecto}/documentos/{idDocumento}` → Eliminar documento
+Aún no implementados:
 - `POST /proyectos/{idProyecto}/documentos/buscar` → Buscar documentos con IA
 - `POST /proyectos/{idProyecto}/documentos/analizar` → Analizar documento con IA
 
@@ -112,15 +164,20 @@ La aplicación escuchará por defecto en http://127.0.0.1:5000/ y expondrá una 
 ### Proyecto
 | Campo       | Tipo    | Descripción |
 |------------|---------|-------------|
-| idProyecto | integer | Identificador del proyecto |
-| nombre     | string  | Nombre del proyecto |
-| descripcion| string  | Descripción del proyecto |
-| proyecto_url | string | URL del proyecto |
+| idProyecto | integer | PK - Identificador del proyecto |
+| nombre     | varchar (150)  | Nombre del proyecto |
+| descripcion| text  | Descripción del proyecto |
+| proyecto_url | varchar (250) | URL del proyecto en SharePoint |
+| id_sharepoint | varchar (100) | ID de la carpeta del proyecto en SharePoint |
+| fecha_creacion | timestampz | Fecha de creación |
 
 ### Documento
 | Campo       | Tipo    | Descripción |
 |------------|---------|-------------|
-| idDocumento | integer | Identificador del documento |
-| nombre      | string  | Nombre del documento |
-| descripcion | string  | Descripción del documento |
-| url         | string  | URL del archivo subido |
+| idDocumento | integer | PK - Identificador del documento |
+| proyecto_id      | integer  | FK - Identificardor del proyecto asociado |
+| nombre      | varchar (150)  | Nombre del documento |
+| descripcion | text  | Descripción del documento |
+| url         | varchar (250)  | URL del archivo subido |
+| id_sharepoint | varchar (100) | ID del archivo en SharePoint |
+| fecha_creacion | timestampz | Fecha de creación |

@@ -1,6 +1,6 @@
 from flask import jsonify, request
 from app import app
-from app.utils import funciones as funcs  # Importa todo el módulo con un alias
+from app.utils import funciones as funcs
 
 # -------------------- RUTA DE PRUEBA -------------------- #
 # PRUEBA - Llamada a la función saludo desde funciones.py
@@ -10,6 +10,7 @@ def saludo_route():
     return jsonify({"saludo": data})
 
 # -------------------- ACCESS TOKEN MICROSOFT GRAPH -------------------- #
+# Devuelve un token de acceso para Microsoft Graph
 @app.route("/test-token", methods=["GET"])
 def test_token():
     try:
@@ -26,7 +27,18 @@ def test_token():
 @app.route("/proyectos", methods=["GET"])
 def obtener_proyectos_endpoint():
     nombre = request.args.get("nombre")
-    proyectos = funcs.obtener_proyectos(nombre)
+    proyectos_raw = funcs.obtener_proyectos(nombre)
+
+    # Transformar cada proyecto al formato esperado
+    proyectos = [
+        {
+            "idProyecto": p["proyecto_id"],
+            "nombre": p["nombre"],
+            "descripcion": p["descripcion"],
+            "proyecto_url": p["proyecto_url"]
+        }
+        for p in proyectos_raw
+    ]
     return jsonify(proyectos)
 
 
@@ -59,17 +71,23 @@ def crear_proyecto_endpoint():
     # Validar que vengan todos los campos requeridos
     nombre = data.get("nombre")
     descripcion = data.get("descripcion")
-    proyecto_url = data.get("proyecto_url")
 
-    if not nombre or not descripcion or not proyecto_url:
+    if not nombre or not descripcion:
         return jsonify({"mensaje": "Faltan campos obligatorios"}), 400
 
-    # Llamar a la función auxiliar que inserta el proyecto
-    proyecto_id = funcs.crear_proyecto(nombre, descripcion, proyecto_url)
+    # Crear carpeta en Sharepoint y obtener URL + folder_id
+    try:
+        proyecto_url, id_sharepoint = funcs.crear_carpeta_sharepoint(nombre)
+    except Exception as e:
+        return jsonify({"error": f"No se pudo crear la carpeta en SharePoint: {str(e)}"}), 500
+
+    # Guardar el nuevo proyecto en la BBDD
+    proyecto_id = funcs.crear_proyecto(nombre, descripcion, proyecto_url, id_sharepoint)
 
     return jsonify({
         "mensaje": "Proyecto creado correctamente",
-        "proyecto_id": proyecto_id
+        "proyecto_id": proyecto_id,
+        "proyecto_url": proyecto_url
     }), 200
 
 # -------------------- MODIFICAR PROYECTO -------------------- #
@@ -82,17 +100,23 @@ def modificar_proyecto_endpoint(id):
 
     nombre = data.get("nombre")
     descripcion = data.get("descripcion")
-    proyecto_url = data.get("proyecto_url")
 
     # Validar campos obligatorios (opcional si quieres que todos sean requeridos)
-    if not all([nombre, descripcion, proyecto_url]):
+    if not all([nombre, descripcion]):
         return jsonify({"mensaje": "Faltan campos obligatorios"}), 400
-
+    
+    # --- 1. Modificar en SharePoint ---
+    try:
+        proyecto_url  = funcs.modificar_proyecto_sharepoint(id, nombre)
+    except Exception as e:
+        return jsonify({"error": f"No se pudo actualizar la carpeta en SharePoint: {str(e)}"}), 500
+    
+    # --- 2. Modificar en BBDD ---
     # Llamar a la función que actualiza el proyecto en la BBDD
-    actualizado = funcs.modificar_proyecto(id, nombre, descripcion, proyecto_url)
+    actualizado = funcs.modificar_proyecto_bbdd(id, nombre, descripcion, proyecto_url)
 
     if not actualizado:
-        return jsonify({"mensaje": "No se encontró el proyecto con ese ID"}), 404
+        return jsonify({"mensaje": "No se pudo actualizar en la BBDD"}), 404
 
     return jsonify({"mensaje": "Proyecto actualizado correctamente"})
 
@@ -101,13 +125,15 @@ def modificar_proyecto_endpoint(id):
 @app.route("/proyectos/<int:id>", methods=["DELETE"])
 def eliminar_proyecto_endpoint(id):
     # Llamamos a la función auxiliar que elimina el proyecto
-    eliminado = funcs.eliminar_proyecto(id)
+    try: 
+        eliminado = funcs.eliminar_proyecto(id)
+
+    except Exception as e:
+        return jsonify({"error": f"No se pudo eliminar el proyecto: {str(e)}"}), 500
 
     if not eliminado:
-        # No se encontró el proyecto con ese ID
         return jsonify({"mensaje": "No se encontró el proyecto con ese ID"}), 404
 
-    # Proyecto eliminado correctamente
     return jsonify({"mensaje": "Proyecto eliminado correctamente"})
 
 """-----------------------------------------------------------------------
@@ -117,29 +143,56 @@ def eliminar_proyecto_endpoint(id):
 # -------------------- LISTAR DOCUMENTOS DE UN PROYECTO -------------------- #
 @app.route("/proyectos/<int:idProyecto>/documentos", methods=["GET"])
 def obtener_documentos_endpoint(idProyecto):
-    documentos = funcs.obtener_documentos(idProyecto)
+    documentos_raw = funcs.obtener_documentos(idProyecto)
+
+    # Transformar cada documento al formato esperado
+    documentos = [
+        {
+            "idDocumento": d["documento_id"],
+            "idProyecto": d["proyecto_id"],
+            "nombre": d["nombre"],
+            "descripcion": d["descripcion"],
+            "url": d["url"],
+            "fecha": d["fecha_creacion"]
+        }
+        for d in documentos_raw
+    ]
+
     return jsonify(documentos)
 
 
-# -------------------- SUBIR DOCUMENTO (REGISTRO EN BBDD) -------------------- #
+# -------------------- SUBIR DOCUMENTO (ARCHIVO) A SHAREPOINT Y REGISTRARLO EN LA BBDD -------------------- #
 @app.route("/proyectos/<int:idProyecto>/documentos", methods=["POST"])
 def crear_documento_endpoint(idProyecto):
-    data = request.get_json()
+    if "file" not in request.files:
+        return jsonify({"mensaje": "No se recibió archivo"}), 400
 
-    # Validar campos obligatorios
-    nombre = data.get("nombre")
-    descripcion = data.get("descripcion")
-    url = data.get("url")  # URL de OneDrive, Sharepoint u otro
+    nombre = request.form.get("nombre")
+    descripcion = request.form.get("descripcion")
+    archivo = request.files["file"]
 
-    if not nombre or not descripcion or not url:
+    if not nombre or not descripcion or not archivo:
         return jsonify({"mensaje": "Faltan campos obligatorios"}), 400
+    
+    # Obtener folder_id del proyecto
+    folder_id = funcs.obtener_info_proyecto(idProyecto)
 
-    documento_id = funcs.crear_documento(idProyecto, nombre, descripcion, url)
+    # Subir el archivo a SharePoint
+    try:
+        contenido_bytes = archivo.read()
+        archivo_url, archivo_id = funcs.subir_archivo_sharepoint(archivo.filename, contenido_bytes, folder_id)
+    except Exception as e:
+        return jsonify({"error": f"No se pudo subir el archivo a SharePoint: {str(e)}"}), 500
+
+    # Registrar documento en BBDD
+    documento_id = funcs.crear_documento(idProyecto, nombre, descripcion, archivo_url, archivo_id)
 
     return jsonify({
         "mensaje": "Documento creado correctamente",
-        "documento_id": documento_id
+        "documento_id": documento_id,
+        "url": archivo_url
     }), 200
+
 
 
 # -------------------- OBTENER DOCUMENTO POR ID -------------------- #
@@ -166,19 +219,42 @@ def obtener_documento_por_id_endpoint(idProyecto, idDocumento):
 # -------------------- MODIFICAR DOCUMENTO -------------------- #
 @app.route("/proyectos/<int:idProyecto>/documentos/<int:idDocumento>", methods=["PUT"])
 def modificar_documento_endpoint(idProyecto, idDocumento):
-    data = request.get_json()
-
-    if not data:
-        return jsonify({"mensaje": "No se enviaron datos para actualizar"}), 400
-
+    """
+    Endpoint para modificar un documento existente.
+    Se puede actualizar:
+    - Nombre visible del documento y descripción (en BBDD)
+    - Archivo subido (reemplazando el anterior) (en SharePoint)
+    """
+    data = request.form
+    archivo = request.files.get("file")
     nombre = data.get("nombre")
     descripcion = data.get("descripcion")
-    url = data.get("url")
 
-    if not all([nombre, descripcion, url]):
+    if not nombre or not descripcion:
         return jsonify({"mensaje": "Faltan campos obligatorios"}), 400
 
-    actualizado = funcs.modificar_documento(idDocumento, nombre, descripcion, url)
+    # --- 1. Si hay archivo, reemplazar en SharePoint y actualizar BD ---
+    nueva_url = None
+    if archivo:
+        # --- Obtener info del documento ---
+        try:
+            sharepoint_id = funcs.obtener_info_documento(idDocumento)
+        except Exception as e:
+            return jsonify({"error": f"No se encontró el documento en SharePoint: {str(e)}"}), 404
+
+        # --- Actualizar en SharePoint ---
+        try:
+            contenido_bytes = archivo.read() if archivo else None
+
+            nueva_url = funcs.modificar_documento_sharepoint(sharepoint_id, contenido_bytes)
+        except Exception as e:
+            return jsonify({"error": f"No se pudo actualizar en SharePoint: {str(e)}"}), 500
+
+    # --- 3. Actualizar en la BD ---
+    try:
+        actualizado = funcs.modificar_documento_bbdd(idDocumento, nombre, descripcion, nueva_url)
+    except Exception as e:
+        return jsonify({"error": f"No se pudo actualizar en la base de datos: {str(e)}"}), 500
 
     if not actualizado:
         return jsonify({"mensaje": "No se encontró el documento con ese ID"}), 404
@@ -189,11 +265,12 @@ def modificar_documento_endpoint(idProyecto, idDocumento):
 # -------------------- ELIMINAR DOCUMENTO -------------------- #
 @app.route("/proyectos/<int:idProyecto>/documentos/<int:idDocumento>", methods=["DELETE"])
 def eliminar_documento_endpoint(idProyecto, idDocumento):
-    eliminado = funcs.eliminar_documento(idDocumento)
+    try:
+        eliminado = funcs.eliminar_documento(idDocumento)
+    except Exception as e:
+        return jsonify({"error": f"No se pudo eliminar el documento: {str(e)}"}), 500
 
     if not eliminado:
         return jsonify({"mensaje": "No se encontró el documento con ese ID"}), 404
 
     return jsonify({"mensaje": "Documento eliminado correctamente"})
-
-# Todo: Actualizar los servicios para crear carpetas y subir archivos a Sharepoint
